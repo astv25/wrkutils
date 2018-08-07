@@ -1,5 +1,25 @@
 @echo off
 title ATSi Cleanup Utility
+:adminCheck
+set /p tmp=Checking for administrator rights...<NUL
+net session >nul 2>&1
+if %errorlevel%==0 (
+	echo Admin rights confirmed.
+	goto osDetect
+) else (
+	echo Utility not run with administrator rights, relaunching as administrator...
+	goto elevateSelf
+)
+:elevateSelf
+echo Set objShell = CreateObject("Shell.Application") >elevatedapp.vbs
+echo Set objWshShell = WScript.CreateObject("WScript.Shell") >>elevatedapp.vbs
+echo Set objWshProcessEnv = objWshShell.Environment("PROCESS") >>elevatedapp.vbs
+echo objShell.ShellExecute "MultiOSCleanup.bat", "", "", "runas" >>elevatedapp.vbs
+start "" /WAIT /MIN elevatedapp.vbs
+timeout /t 1 /nobreak > nul
+DEL elevatedapp.vbs
+exit
+:osDetect
 echo Detecting operating system...
 ver | findstr /i "5\.1" > nul
 if %ERRORLEVEL% EQU 0 goto winXP

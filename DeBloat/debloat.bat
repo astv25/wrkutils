@@ -16,12 +16,10 @@ if %errorlevel%==0 (
 	goto elevateSelf
 )
 :elevateSelf
-set targetprog=debloat.bat
-set targetparam=%2
 echo Set objShell = CreateObject("Shell.Application") >elevatedapp.vbs
 echo Set objWshShell = WScript.CreateObject("WScript.Shell") >>elevatedapp.vbs
 echo Set objWshProcessEnv = objWshShell.Environment("PROCESS") >>elevatedapp.vbs
-echo objShell.ShellExecute "debloat.bat", "%2", "", "runas" >>elevatedapp.vbs
+echo objShell.ShellExecute "debloat.bat", "", "", "runas" >>elevatedapp.vbs
 start "" /WAIT /MIN elevatedapp.vbs
 timeout /t 1 /nobreak > nul
 DEL elevatedapp.vbs
