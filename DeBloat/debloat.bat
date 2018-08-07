@@ -1,6 +1,8 @@
 @echo off
-title ATSi De-Bloat Tool
+title De-Bloat Tool
 REM Removes Microsoft and OEM pre-installed applications.
+REM Cribbed/modified from https://github.com/bmrf/tron
+REM Specifically, stage 2.
 set selfDir=%~dp0
 if NOT EXIST %TEMP%\wmic_dump_temp.txt <NUL WMIC product get identifyingnumber,name,version /all > "%TEMP%\wmic_dump_temp.txt" 2>NUL
 type %TEMP%\wmic_dump_temp.txt > %TEMP%\wmic_guid_dump.txt 2>NUL
