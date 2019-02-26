@@ -6,10 +6,13 @@ REM *Imports a default layout for the Start Menu that only includes basic Window
 REM **This layout only takes effect on newly created user profiles, the current profile is unaffected
 REM *Creates a folder on the public desktop named Applications and grants all users full rights to said folder
 REM *Disables hibernation
+REM *Sets time zone
 REM Minimal user interaction is required during runtime.  Once the user has disabled User Account Control, the utility is autonomous.
 REM All necessary components are created in a temporary folder prior to prompting the user to disable UAC.  These components are designed to be invoked by this utility and may behave
 REM unexpectedly if run separately.
 title Windows 10 Initial Configuration Utility
+REM Input desired timezone here.  Value will be passed to tzutil.  Acceptable values can be found by running tzutil /l
+set timezone="Central Standard Time"
 echo Preforming initial setup tasks...
 mkdir TEMP
 echo ALG>TEMP\services.txt
@@ -253,6 +256,12 @@ echo route -p add 65.52.100.93/32 0.0.0.0>>TEMP\telemetry.bat
 echo Snooping disabled.>>TEMP\telemetry.bat
 echo timeout /t 1 /nobreak^>nul>>TEMP\telemetry.bat
 echo exit>>TEMP\telemetry.bat
+echo @echo off>TEMP\timezone.bat
+echo echo Setting timezone...>>TEMP\timezone.bat
+echo tzutil /g>>TEMP\timezone.bat
+echo tzutil /s %timezone%>>TEMP\timezone.bat
+echo timeout /t 1 /nobreak^>nul>>TEMP\timezone.bat
+echo exit>>TEMP\timezone.bat
 echo !^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!
 echo ^!^!^!Please disable User Account Control^!^!^!
 echo ^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!
@@ -279,6 +288,10 @@ timeout /t 2 /nobreak >nul
 echo Done
 set /p tmp=Disabling hibernation...<NUL
 start "" /WAIT /MIN TEMP\ShellElevation.bat TEMP\hibernate.bat
+timeout /t 2 /nobreak >nul
+echo Done
+set /p tmp=Setting time zone...<NUL
+start "" /WAIT /MIN TEMP\ShellElevation.bat TEMP\timezone.bat
 timeout /t 2 /nobreak >nul
 echo Done
 set /p tmp=Cleaning up...<NUL
