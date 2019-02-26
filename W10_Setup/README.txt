@@ -6,3 +6,4 @@ One stop shop file that automates common setup tasks on a fresh install of Windo
 *Creates Applications folder on Public desktop
 *Disables hibernation
 *Disables unnecessary services (Xbox, telemetry, etc)
+*Sets time zone
