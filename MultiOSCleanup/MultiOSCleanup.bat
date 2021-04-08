@@ -56,11 +56,15 @@ echo Cleaning...
 C:
 rd /s /q C:\$RECYCLE.BIN\
 del /s /q C:\Windows\Temp\*
+sc config wuauserv start= disabled
+sc config bits start= disabled
 sc stop wuauserv
 sc stop bits
 del /s /q C:\Windows\SoftwareDistribution\*
 sc start bits
 sc start wuauserv
+sc config wuauserv start= auto
+sc config bits start= auto
 del /s /q C:\temp\*
 cd C:\Users
 for /d %%F in (*) do del /s /q "%F\AppData\Local\Temp\*"
@@ -76,7 +80,15 @@ echo Cleaning...
 C:
 del /s /q C:\temp\*
 del /s /q C:\Windows\Temp\*
+sc config wuauserv start= disabled
+sc config bits start= disabled
+sc stop bits
+sc stop wuauserv
 del /s /q C:\Windows\SoftwareDistribution\*
+sc start wuauserv
+sc start bits
+sc config bits start= auto
+sc config wuauserv start= auto
 del /s /q C:\Windows\minidump\*
 del /q C:\Windows\MEMORY.dmp
 cd C:\Users
