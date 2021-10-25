@@ -7,14 +7,41 @@ REM **This layout only takes effect on newly created user profiles, the current 
 REM *Creates a folder on the public desktop named Applications and grants all users full rights to said folder
 REM *Disables hibernation
 REM *Sets time zone
-REM Minimal user interaction is required during runtime.  Once the user has disabled User Account Control, the utility is autonomous.
+REM *Installs Google Chrome
+REM *Adds registry key to disable Chrome Software Reporter
+REM *Installs Adobe Reader DC
+REM *Creats a batch file that:
+REM -Sets default browser to Chrome 
+REM -Sets default PDF application to Adobe Reader DC
+REM --Uses SetUserFTA by Christoph Kolbicz @ kolbi.cz
+REM --Needs to be run after user creation
+REM Minimal user interaction is required during runtime.
 REM All necessary components are created in a temporary folder prior to prompting the user to disable UAC.  These components are designed to be invoked by this utility and may behave
 REM unexpectedly if run separately.
 title Windows 10 Initial Configuration Utility
-REM Input desired timezone here.  Value will be passed to tzutil.  Acceptable values can be found by running tzutil /l
+REM Set desired timezone below.  Value will be passed to tzutil.  Acceptable values can be found by running tzutil /l
 set timezone="Central Standard Time"
-echo Preforming initial setup tasks...
+REM Inadvisable to make changes below this line
+echo Bootstrapping...
+REM Create a folder to contain sub-scripts
 mkdir TEMP
+REM Download Chrome installer
+set /p tmp=Downloading Chrome installer.........<NUL
+start "" /MIN /WAIT /B powershell -Command "iwr -outf %cd%\TEMP\chrome.exe https://dl.google.com/chrome/install/375.126/chrome_installer.exe"
+echo Done
+REM Download Adobe Reader installer
+set /p tmp=Downloading Adobe Reader installer...<NUL
+start "" /MIN /WAIT /B powershell -command "iwr -outf %cd%\TEMP\acrordr.exe https://ardownload2.adobe.com/pub/adobe/reader/win/AcrobatDC/2100720099/AcroRdrDC2100720099_en_US.exe"
+echo Done
+REM Download SetUserFTA
+set /p tmp=Downloading SetUserFTA...............<NUL
+start "" /MIN /WAIT /B powershell -command "iwr -outf %cd%\TEMP\sufta.zip http://kolbi.cz/SetUserFTA.zip"
+echo Done
+REM Unzip SetUserFTA
+set /p tmp=Unzipping SetUserFTA.................<NUL
+start "" /MIN /WAIT /B powershell -command "Expand-Archive -Path %cd%\TEMP\sufta.zip -DestinationPath %cd%\TEMP\sufta\ -Force"
+echo Done
+REM Create service blacklist file
 echo ALG>TEMP\services.txt
 echo PeerDistSvc>>TEMP\services.txt
 echo NfsClient>>TEMP\services.txt
@@ -51,6 +78,7 @@ echo XboxGipSvc>>TEMP\services.txt
 echo xbgm>>TEMP\services.txt
 echo WMPNetworkSvc>>TEMP\services.txt
 echo Wecsvc>>TEMP\services.txt
+REM Create run-as-admin batch script
 echo @echo off>TEMP\ShellElevation.bat
 echo set targetprog=%%1>>TEMP\ShellElevation.bat
 echo set targetparam=%%2>>TEMP\ShellElevation.bat
@@ -58,10 +86,11 @@ echo echo Set objShell = CreateObject("Shell.Application") ^>TEMP\elevatedapp.vb
 echo echo Set objWshShell = WScript.CreateObject("WScript.Shell") ^>^>TEMP\elevatedapp.vbs>>TEMP\ShellElevation.bat
 echo echo Set objWshProcessEnv = objWshShell.Environment("PROCESS") ^>^>TEMP\elevatedapp.vbs>>TEMP\ShellElevation.bat
 echo echo objShell.ShellExecute "%%1", "%%2", "", "runas" ^>^>TEMP\elevatedapp.vbs>>TEMP\ShellElevation.bat
-echo start "" /MIN TEMP\elevatedapp.vbs>>TEMP\ShellElevation.bat
+echo start "" /MIN /WAIT /B TEMP\elevatedapp.vbs>>TEMP\ShellElevation.bat
 echo timeout /t 1 /nobreak ^> nul>>TEMP\ShellElevation.bat
 echo DEL TEMP\elevatedapp.vbs>>TEMP\ShellElevation.bat
 echo exit>>TEMP\ShellElevation.bat
+REM Create script to disable services in blacklist file
 echo @echo off>TEMP\services.bat
 echo for /f %%%%G in (%cd%\TEMP\services.txt) do (>>TEMP\services.bat
 echo echo Disabling %%%%G>>TEMP\services.bat
@@ -70,6 +99,7 @@ echo sc config %%%%G start= disabled>>TEMP\services.bat
 echo )>>TEMP\services.bat
 echo timeout /t 2 /nobreak ^> nul>>TEMP\services.bat
 echo exit>>TEMP\services.bat
+REM Create script to disable Windows Firewall
 echo @echo off>TEMP\firewall.bat
 echo echo Initial state of Windows Firewall:>>TEMP\firewall.bat
 echo netsh advfirewall show allprofiles ^| findstr "State Profile">>TEMP\firewall.bat
@@ -79,6 +109,7 @@ echo echo Current state of Windows Firewall:>>TEMP\firewall.bat
 echo netsh advfirewall show allprofiles ^| findstr "State Profile">>TEMP\firewall.bat
 echo timeout /t 2 /nobreak ^> nul>>TEMP\firewall.bat
 echo exit>>TEMP\firewall.bat
+REM Create default start menu layout XML file
 echo ^<LayoutModificationTemplate Version="1" xmlns="http://schemas.microsoft.com/Start/2014/LayoutModification"^> >TEMP\StartLayout.xml
 echo  ^<LayoutOptions StartTileGroupCellWidth="6" /^> >>TEMP\StartLayout.xml
 echo   ^<DefaultLayoutOverride^> >>TEMP\StartLayout.xml
@@ -102,19 +133,23 @@ echo       ^</defaultlayout:StartLayout^> >>TEMP\StartLayout.xml
 echo     ^</StartLayoutCollection^> >>TEMP\StartLayout.xml
 echo   ^</DefaultLayoutOverride^> >>TEMP\StartLayout.xml
 echo ^</LayoutModificationTemplate^> >>TEMP\StartLayout.xml
+REM Create script to set default start menu layout for new users
 echo @echo off>TEMP\startmenu.bat
-echo start "" /WAIT powershell -Command "Import-StartLayout -MountPath C:\ -LayoutPath %cd%\TEMP\StartLayout.xml">>TEMP\startmenu.bat
+echo start "" /MIN /WAIT /B powershell -Command "Import-StartLayout -MountPath C:\ -LayoutPath %cd%\TEMP\StartLayout.xml">>TEMP\startmenu.bat
 echo timeout /t 2 /nobreak ^> nul>>TEMP\startmenu.bat
 echo exit>>TEMP\startmenu.bat
+REM Create script to make Application folder on Public desktop
 echo @echo off>TEMP\appfolder.bat
 echo mkdir C:\Users\Public\Desktop\Applications>>TEMP\appfolder.bat
 echo icacls C:\Users\Public\Desktop\Applications /grant Everyone:(OI)(CI)F /t>>TEMP\appfolder.bat
 echo timeout /t 2 /nobreak ^> nul>>TEMP\appfolder.bat
 echo exit>>TEMP\appfolder.bat
+REM Create script to disable hibernation
 echo @echo off>TEMP\hibernate.bat
 echo powercfg /h off>>TEMP\hibernate.bat
 echo timeout /t 1 /nobreak ^>nul>>TEMP\hibernate.bat
 echo exit>>TEMP\hibernate.bat
+REM Create script to disable as much W10 telemetry as possible
 echo @echo off>TEMP\telemetry.bat
 echo echo Removing bad updates...>>TEMP\telemetry.bat
 echo start /wait "" wusa /uninstall /kb:2902907 /norestart /quiet>>TEMP\telemetry.bat
@@ -256,45 +291,96 @@ echo route -p add 65.52.100.93/32 0.0.0.0>>TEMP\telemetry.bat
 echo Snooping disabled.>>TEMP\telemetry.bat
 echo timeout /t 1 /nobreak^>nul>>TEMP\telemetry.bat
 echo exit>>TEMP\telemetry.bat
+REM Create script to set timezone
 echo @echo off>TEMP\timezone.bat
 echo echo Setting timezone...>>TEMP\timezone.bat
 echo tzutil /g>>TEMP\timezone.bat
 echo tzutil /s %timezone%>>TEMP\timezone.bat
 echo timeout /t 1 /nobreak^>nul>>TEMP\timezone.bat
 echo exit>>TEMP\timezone.bat
+REM Create script to install Chrome
+echo @echo off>TEMP\chrome.bat
+echo start "" /WAIT %cd%\TEMP\chrome.exe>>TEMP\chrome.bat
+REM Create script to disable Chrome snooping
+echo @echo off>TEMP\chromesnoop.bat
+echo echo Adding registry keys to disable Chrome Software Reporting tool...>>TEMP\chromesnoop.bat
+echo reg ADD "HKLM\Software\Policies\Google\Chrome" /v "ChromeCleanupEnabled" /t REG_DWORD /d "0" /f>>TEMP\chromesnoop.bat
+echo reg ADD "HKLM\Software\Policies\Google\Chrome" /v "ChromeCleanupReportingEnabled" /t REG_DWORD /d "0" /f>>TEMP\chromesnoop.bat
+REM Create script to install Adobe Reader
+echo @echo off>TEMP\acrordr.bat
+echo start "" /WAIT %cd%\TEMP\acrordr.exe /i /qn>>TEMP\acrordr.bat
+REM Create script to set default programs
+echo @echo off>TEMP\defaultprog.bat
+echo echo Setting default browser to Chrome...>>TEMP\defaultprog.bat
+echo C:\TEMP\SetUserFTA\SetUserFTA.exe http ChromeHTML "Users">>TEMP\defaultprog.bat
+echo C:\TEMP\SetUserFTA\SetUserFTA.exe https ChromeHTML "Users">>TEMP\defaultprog.bat
+echo C:\TEMP\SetUserFTA\SetUserFTA.exe .htm ChromeHTML "Users">>TEMP\defaultprog.bat
+echo C:\TEMP\SetUserFTA\SetUserFTA.exe .html ChromeHTML "Users">>TEMP\defaultprog.bat
+echo C:\TEMP\SetUserFTA\SetUserFTA.exe .pdf AcroExch.Document.DC "Users">>TEMP\defaultprog.bat
+echo echo Done>>TEMP\defaultprog.bat
+echo exit>>TEMP\defaultprog.bat
+REM Create script to allow default programs to be easily set during user setup
+echo echo Setting up default programs shortcut...>TEMP\defprogsetup.bat
+echo mkdir C:\TEMP\SetUserFTA>>TEMP\defprogsetup.bat
+echo copy %cd%\TEMP\defaultprog.bat C:\TEMP\defaultprog.bat>>TEMP\defprogsetup.bat
+echo xcopy /S /V /C /I %cd%\TEMP\sufta\SetUserFTA C:\TEMP\SetUserFTA\>>TEMP\defprogsetup.bat
+echo mklink C:\Users\Public\Desktop\SetDefaultPrograms C:\TEMP\defaultprog.bat>>TEMP\defprogsetup.bat
+REM End of bootstrapping
+echo Bootstrap complete.
+REM Prompt user to disable UAC
 echo !^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!
 echo ^!^!^!Please disable User Account Control^!^!^!
 echo ^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!^!
 start "" /WAIT C:\Windows\system32\UserAccountControlSettings.exe
-set /p tmp=Disabling extraneous services...<NUL
-start "" /WAIT /MIN TEMP\ShellElevation.bat TEMP\services.bat
+set /p tmp=Disabling extraneous services...............................<NUL
+start "" /MIN /WAIT /B TEMP\ShellElevation.bat TEMP\services.bat
 timeout /t 5 /nobreak >nul
 echo Done
-set /p tmp=Disabling Windows 10 Snooping...<NUL
-start "" /WAIT /MIN TEMP\ShellElevation.bat TEMP\telemetry.bat
+set /p tmp=Disabling Windows 10 snooping...............................<NUL
+start "" /MIN /WAIT /B TEMP\ShellElevation.bat TEMP\telemetry.bat
 timeout /t 5 /nobreak >nul
 echo Done
-set /p tmp=Setting Windows Firewall to Disabled...<NUL
-start "" /WAIT /MIN TEMP\ShellElevation.bat TEMP\firewall.bat
+set /p tmp=Setting Windows Firewall to Disabled........................<NUL
+start "" /MIN /WAIT /B TEMP\ShellElevation.bat TEMP\firewall.bat
 timeout /t 5 /nobreak >nul
 echo Done
-set /p tmp=Setting default layout for Start Menu...<NUL
-start "" /WAIT /MIN TEMP\ShellElevation.bat TEMP\startmenu.bat
+set /p tmp=Setting default layout for Start Menu.......................<NUL
+start "" /MIN /WAIT /B TEMP\ShellElevation.bat TEMP\startmenu.bat
 timeout /t 15 /nobreak >nul
 echo Done
-set /p tmp=Creating Applications folder on Public desktop...<NUL
-start "" /WAIT /MIN TEMP\ShellElevation.bat TEMP\appfolder.bat
+set /p tmp=Creating Applications folder on Public Desktop..............<NUL
+start "" /MIN /WAIT /B TEMP\ShellElevation.bat TEMP\appfolder.bat
 timeout /t 2 /nobreak >nul
 echo Done
-set /p tmp=Disabling hibernation...<NUL
-start "" /WAIT /MIN TEMP\ShellElevation.bat TEMP\hibernate.bat
+set /p tmp=Disabling hibernation.......................................<NUL
+start "" /MIN /WAIT /B TEMP\ShellElevation.bat TEMP\hibernate.bat
 timeout /t 2 /nobreak >nul
 echo Done
-set /p tmp=Setting time zone...<NUL
-start "" /WAIT /MIN TEMP\ShellElevation.bat TEMP\timezone.bat
+set /p tmp=Setting time zone...........................................<NUL
+start "" /MIN /WAIT /B TEMP\ShellElevation.bat TEMP\timezone.bat
 timeout /t 2 /nobreak >nul
 echo Done
+echo Installing Google Chrome....................................
+start "" /MIN /WAIT /B TEMP\ShellElevation.bat TEMP\chrome.bat
+timeout /t 2 /nobreak >nul
+echo When Chrome has finished installing
+pause
+set /p tmp=Disabling Chrome Software Reporting Tool....................<NUL
+start "" /MIN /WAIT /B TEMP\ShellElevation.bat TEMP\chromesnoop.bat
+timeout /t 2 /nobreak >nul
+echo Done
+echo Installing Adobe Reader DC..................................
+start "" /MIN /WAIT /B TEMP\ShellElevation.bat TEMP\acrordr.bat
+timeout /t 2 /nobreak >nul
+echo When Adobe Reader has finished installing
+pause
+set /p tmp=Setting up default browser and PDF handler scheduled task...<NUL
+start "" /MIN /WAIT /B TEMP\ShellElevation.bat TEMP\defprogsetup.bat
+timeout /t 2 /nobreak >nul
+echo Done
+echo Tasks complete, waiting to clean up
+pause
 set /p tmp=Cleaning up...<NUL
 DEL /s /q TEMP\* >nul
-RD /q TEMP >nul
+RD /s /q TEMP >nul
 echo Done
