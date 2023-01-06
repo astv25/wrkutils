@@ -1,0 +1,5 @@
+﻿#Ignore TEMP folder under W10_Setup
+W10_Setup/TEMP/
+W10_Setup/TEMP/services.bat
+W10_Setup/TEMP/ShellElevation.bat
+W10_Setup/TEMP/startmenu.bat

@@ -70,7 +70,6 @@ echo WFDSConSvc>>TEMP\services.txt
 echo FrameServer>>TEMP\services.txt
 echo wisvc>>TEMP\services.txt
 echo icssvc>>TEMP\services.txt
-echo Wwansvc>>TEMP\services.txt
 echo XblAuthManager>>TEMP\services.txt
 echo XblGameSave>>TEMP\services.txt
 echo XboxNetApiSvc>>TEMP\services.txt
